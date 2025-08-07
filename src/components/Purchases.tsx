@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ShoppingCart, User, Package, Calendar } from 'lucide-react';
+import { Plus, Search, Package, TrendingUp, Calendar, User, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Purchase, Student, StockItem } from '../types';
+import { StockPurchase, StockItem } from '../types';
 import toast from 'react-hot-toast';
 
 export function Purchases() {
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [stockPurchases, setStockPurchases] = useState<StockPurchase[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
 
   const [formData, setFormData] = useState({
-    student_id: '',
     item_id: '',
     quantity: '',
+    cost_per_unit: '',
+    supplier_name: '',
+    purchase_date: new Date().toISOString().split('T')[0],
+    notes: '',
   });
 
   useEffect(() => {
@@ -24,35 +26,28 @@ export function Purchases() {
 
   const fetchData = async () => {
     try {
-      const [purchasesResponse, studentsResponse, stockResponse] = await Promise.all([
+      const [purchasesResponse, stockResponse] = await Promise.all([
         supabase
-          .from('purchases')
+          .from('stock_purchases')
           .select(`
             *,
-            students(name, admission_no),
-            stock_items(item_name)
+            stock_items(item_name, selling_price)
           `)
-          .order('timestamp', { ascending: false }),
-        supabase.from('students').select('*').order('name'),
+          .order('purchase_date', { ascending: false }),
         supabase.from('stock_items').select('*').order('item_name')
       ]);
 
       if (purchasesResponse.error) throw purchasesResponse.error;
-      if (studentsResponse.error) throw studentsResponse.error;
       if (stockResponse.error) throw stockResponse.error;
 
-      setPurchases(purchasesResponse.data?.map(purchase => ({
+      setStockPurchases(purchasesResponse.data?.map(purchase => ({
         ...purchase,
-        student: {
-          name: purchase.students?.name || 'Unknown',
-          admission_no: purchase.students?.admission_no || 'Unknown'
-        },
         stock_item: {
-          item_name: purchase.stock_items?.item_name || 'Unknown'
+          item_name: purchase.stock_items?.item_name || 'Unknown',
+          selling_price: purchase.stock_items?.selling_price || 0
         }
       })) || []);
 
-      setStudents(studentsResponse.data || []);
       setStockItems(stockResponse.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -65,99 +60,84 @@ export function Purchases() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.student_id || !formData.item_id || !formData.quantity) {
-      toast.error('Please fill in all fields');
+    if (!formData.item_id || !formData.quantity || !formData.cost_per_unit || !formData.supplier_name) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
     const quantity = parseInt(formData.quantity);
+    const costPerUnit = parseFloat(formData.cost_per_unit);
+
     if (isNaN(quantity) || quantity <= 0) {
       toast.error('Please enter a valid quantity');
       return;
     }
 
+    if (isNaN(costPerUnit) || costPerUnit <= 0) {
+      toast.error('Please enter a valid cost per unit');
+      return;
+    }
+
+    const totalCost = quantity * costPerUnit;
+
     try {
-      const stockItem = stockItems.find(item => item.id === formData.item_id);
-      const student = students.find(s => s.id === formData.student_id);
-
-      if (!stockItem || !student) {
-        toast.error('Invalid item or student selected');
-        return;
-      }
-
-      if (stockItem.quantity < quantity) {
-        toast.error('Insufficient stock quantity');
-        return;
-      }
-
-      const totalPrice = stockItem.selling_price * quantity;
-
-      if (student.balance < totalPrice) {
-        toast.error('Insufficient student balance');
-        return;
-      }
-
-      // Add purchase record
+      // Add stock purchase record
       const { error: purchaseError } = await supabase
-        .from('purchases')
+        .from('stock_purchases')
         .insert([{
-          student_id: formData.student_id,
           item_id: formData.item_id,
           quantity,
-          total_price: totalPrice,
+          cost_per_unit: costPerUnit,
+          total_cost: totalCost,
+          supplier_name: formData.supplier_name,
+          purchase_date: formData.purchase_date,
+          notes: formData.notes || null,
         }]);
 
       if (purchaseError) throw purchaseError;
 
-      // Update stock quantity
-      const { error: stockError } = await supabase
-        .from('stock_items')
-        .update({ 
-          quantity: stockItem.quantity - quantity,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', formData.item_id);
+      // Update stock quantity and cost price
+      const stockItem = stockItems.find(item => item.id === formData.item_id);
+      if (stockItem) {
+        const newQuantity = stockItem.quantity + quantity;
+        
+        // Update weighted average cost price
+        const currentTotalValue = stockItem.quantity * stockItem.cost_price;
+        const newTotalValue = currentTotalValue + totalCost;
+        const newCostPrice = newTotalValue / newQuantity;
 
-      if (stockError) throw stockError;
+        const { error: stockError } = await supabase
+          .from('stock_items')
+          .update({ 
+            quantity: newQuantity,
+            cost_price: newCostPrice,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', formData.item_id);
 
-      // Update student balance and total spent
-      const { error: studentError } = await supabase
-        .from('students')
-        .update({ 
-          balance: student.balance - totalPrice,
-          total_spent: student.total_spent + totalPrice
-        })
-        .eq('id', formData.student_id);
+        if (stockError) throw stockError;
+      }
 
-      if (studentError) throw studentError;
-
-      // Add transaction record for the purchase
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert([{
-          student_id: formData.student_id,
-          amount: totalPrice,
-          type: 'spend',
-          method: 'credit',
-          note: `Purchase: ${stockItem.item_name} (${quantity} items)`,
-        }]);
-
-      if (transactionError) throw transactionError;
-
-      toast.success('Purchase completed successfully');
-      setFormData({ student_id: '', item_id: '', quantity: '' });
+      toast.success('Stock purchase recorded successfully');
+      setFormData({
+        item_id: '',
+        quantity: '',
+        cost_per_unit: '',
+        supplier_name: '',
+        purchase_date: new Date().toISOString().split('T')[0],
+        notes: '',
+      });
       setShowAddForm(false);
       fetchData();
     } catch (error) {
-      console.error('Error processing purchase:', error);
-      toast.error('Failed to process purchase');
+      console.error('Error recording stock purchase:', error);
+      toast.error('Failed to record stock purchase');
     }
   };
 
-  const filteredPurchases = purchases.filter(purchase =>
-    purchase.student?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.student?.admission_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.stock_item?.item_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPurchases = stockPurchases.filter(purchase =>
+    purchase.stock_item?.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    purchase.supplier_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatCurrency = (amount: number) => {
@@ -172,9 +152,17 @@ export function Purchases() {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
+  };
+
+  const calculateProfit = (purchase: StockPurchase) => {
+    if (!purchase.stock_item) return 0;
+    return (purchase.stock_item.selling_price - purchase.cost_per_unit) * purchase.quantity;
+  };
+
+  const calculateProfitMargin = (purchase: StockPurchase) => {
+    if (!purchase.stock_item || purchase.cost_per_unit === 0) return 0;
+    return ((purchase.stock_item.selling_price - purchase.cost_per_unit) / purchase.cost_per_unit) * 100;
   };
 
   if (loading) {
@@ -189,8 +177,8 @@ export function Purchases() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daily Purchases</h1>
-          <p className="text-gray-600">Record and track student purchases from stock</p>
+          <h1 className="text-2xl font-bold text-gray-900">Stock Purchases</h1>
+          <p className="text-gray-600">Record daily stock purchases from suppliers</p>
         </div>
         <button
           onClick={() => setShowAddForm(true)}
@@ -204,29 +192,11 @@ export function Purchases() {
       {/* Add Form */}
       {showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Record New Purchase</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Record Stock Purchase</h2>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Student
-              </label>
-              <select
-                value={formData.student_id}
-                onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              >
-                <option value="">Select Student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} ({formatCurrency(student.balance)})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Item
+                Stock Item *
               </label>
               <select
                 value={formData.item_id}
@@ -235,16 +205,16 @@ export function Purchases() {
                 required
               >
                 <option value="">Select Item</option>
-                {stockItems.filter(item => item.quantity > 0).map((item) => (
+                {stockItems.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.item_name} ({item.quantity} left, {formatCurrency(item.selling_price)} each)
+                    {item.item_name} (Current: {item.quantity})
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity
+                Quantity *
               </label>
               <input
                 type="number"
@@ -252,11 +222,63 @@ export function Purchases() {
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="1"
+                placeholder="Enter quantity"
                 required
               />
             </div>
-            <div className="md:col-span-3 flex space-x-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cost per Unit (₹) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.cost_per_unit}
+                onChange={(e) => setFormData({ ...formData, cost_per_unit: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Supplier Name *
+              </label>
+              <input
+                type="text"
+                value={formData.supplier_name}
+                onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter supplier name"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Purchase Date *
+              </label>
+              <input
+                type="date"
+                value={formData.purchase_date}
+                onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes
+              </label>
+              <input
+                type="text"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Optional notes"
+              />
+            </div>
+            <div className="md:col-span-2 lg:col-span-3 flex space-x-3">
               <button
                 type="submit"
                 className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
@@ -267,13 +289,27 @@ export function Purchases() {
                 type="button"
                 onClick={() => {
                   setShowAddForm(false);
-                  setFormData({ student_id: '', item_id: '', quantity: '' });
+                  setFormData({
+                    item_id: '',
+                    quantity: '',
+                    cost_per_unit: '',
+                    supplier_name: '',
+                    purchase_date: new Date().toISOString().split('T')[0],
+                    notes: '',
+                  });
                 }}
                 className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
               >
                 Cancel
               </button>
             </div>
+            {formData.quantity && formData.cost_per_unit && (
+              <div className="md:col-span-2 lg:col-span-3 bg-blue-50 p-4 rounded-md">
+                <p className="text-sm text-blue-800">
+                  <strong>Total Cost: {formatCurrency(parseInt(formData.quantity || '0') * parseFloat(formData.cost_per_unit || '0'))}</strong>
+                </p>
+              </div>
+            )}
           </form>
         </div>
       )}
@@ -284,7 +320,7 @@ export function Purchases() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
             type="text"
-            placeholder="Search by student name, admission number, or item..."
+            placeholder="Search by item name or supplier..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -299,16 +335,22 @@ export function Purchases() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student
+                  Item
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Item
+                  Supplier
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Quantity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Price
+                  Cost/Unit
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total Cost
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Profit
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
@@ -320,21 +362,6 @@ export function Purchases() {
                 <tr key={purchase.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="bg-blue-100 rounded-full p-2 mr-3">
-                        <User className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {purchase.student?.name || 'Unknown'}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {purchase.student?.admission_no || 'Unknown'}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
                       <div className="bg-green-100 rounded-full p-2 mr-3">
                         <Package className="h-4 w-4 text-green-600" />
                       </div>
@@ -343,16 +370,37 @@ export function Purchases() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="bg-blue-100 rounded-full p-2 mr-3">
+                        <Truck className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="text-sm text-gray-900">{purchase.supplier_name}</div>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {purchase.quantity}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                    {formatCurrency(purchase.total_price)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatCurrency(purchase.cost_per_unit)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
+                    {formatCurrency(purchase.total_cost)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm">
+                      <div className="font-semibold text-green-600">
+                        {formatCurrency(calculateProfit(purchase))}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {calculateProfitMargin(purchase).toFixed(1)}% margin
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-2" />
-                      {formatDate(purchase.timestamp)}
+                      {formatDate(purchase.purchase_date)}
                     </div>
                   </td>
                 </tr>
@@ -362,7 +410,7 @@ export function Purchases() {
         </div>
         {filteredPurchases.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No purchases found
+            No stock purchases found
           </div>
         )}
       </div>

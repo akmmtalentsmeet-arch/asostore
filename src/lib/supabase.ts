@@ -128,6 +128,41 @@ export type Database = {
           timestamp?: string;
         };
       };
+      stock_purchases: {
+        Row: {
+          id: string;
+          item_id: string;
+          quantity: number;
+          cost_per_unit: number;
+          total_cost: number;
+          supplier_name: string;
+          purchase_date: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          item_id: string;
+          quantity: number;
+          cost_per_unit: number;
+          total_cost: number;
+          supplier_name: string;
+          purchase_date?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          item_id?: string;
+          quantity?: number;
+          cost_per_unit?: number;
+          total_cost?: number;
+          supplier_name?: string;
+          purchase_date?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
     };
   };
 };

@@ -37,7 +37,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     { id: 'dashboard', name: 'Dashboard', icon: Home },
     { id: 'students', name: 'Students', icon: Users },
     { id: 'transactions', name: 'Transactions', icon: CreditCard },
-    { id: 'purchases', name: 'Purchases', icon: ShoppingCart },
+    { id: 'purchases', name: 'Stock Purchases', icon: ShoppingCart },
     { id: 'stock', name: 'Stock', icon: Package },
   ];
 

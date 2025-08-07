@@ -49,11 +49,28 @@ export type Purchase = {
   };
 };
 
+export type StockPurchase = {
+  id: string;
+  item_id: string;
+  quantity: number;
+  cost_per_unit: number;
+  total_cost: number;
+  supplier_name: string;
+  purchase_date: string;
+  notes: string | null;
+  created_at: string;
+  stock_item?: {
+    item_name: string;
+    selling_price: number;
+  };
+};
+
 export type DashboardStats = {
   totalStudents: number;
   totalBalance: number;
   totalDeposits: number;
-  totalExpenses: number;
+  totalSpends: number;
   netProfit: number;
   totalStockValue: number;
+  totalPurchaseCost: number;
 };

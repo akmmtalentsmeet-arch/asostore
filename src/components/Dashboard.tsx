@@ -15,12 +15,13 @@ import toast from 'react-hot-toast';
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
+    totalBalance: 0,
     totalDeposits: 0,
     totalSpends: 0,
     netProfit: 0,
     totalStockValue: 0,
+    totalPurchaseCost: 0,
   });
-  const [totalBalance, setTotalBalance] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,8 +65,16 @@ export function Dashboard() {
       const totalStockValue = stockItems
         ?.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0) || 0;
 
-      // Calculate net profit from purchases
-      const { data: purchases } = await supabase
+      // Fetch stock purchases for total purchase cost
+      const { data: stockPurchases } = await supabase
+        .from('stock_purchases')
+        .select('total_cost');
+
+      const totalPurchaseCost = stockPurchases
+        ?.reduce((sum, purchase) => sum + purchase.total_cost, 0) || 0;
+
+      // Calculate net profit from student purchases
+      const { data: studentPurchases } = await supabase
         .from('purchases')
         .select(`
           quantity,
@@ -74,7 +83,7 @@ export function Dashboard() {
         `);
 
       let netProfit = 0;
-      purchases?.forEach(purchase => {
+      studentPurchases?.forEach(purchase => {
         if (purchase.stock_items) {
           const profit = (purchase.stock_items.selling_price - purchase.stock_items.cost_price) * purchase.quantity;
           netProfit += profit;
@@ -93,13 +102,13 @@ export function Dashboard() {
 
       setStats({
         totalStudents: studentCount || 0,
+        totalBalance: totalStudentBalance,
         totalDeposits,
         totalSpends: totalSpends,
         netProfit,
         totalStockValue,
+        totalPurchaseCost,
       });
-
-      setTotalBalance(totalStudentBalance);
 
       setRecentTransactions(recentTxns?.map(txn => ({
         ...txn,
@@ -182,7 +191,7 @@ export function Dashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Balance</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBalance)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalBalance)}</p>
             </div>
           </div>
         </div>
@@ -231,6 +240,18 @@ export function Dashboard() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Stock Value</p>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalStockValue)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <TrendingDown className="h-6 w-6 text-orange-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Purchase Cost</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalPurchaseCost)}</p>
             </div>
           </div>
         </div>
