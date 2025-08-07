@@ -128,6 +128,47 @@ export type Database = {
           timestamp?: string;
         };
       };
+      daily_sales: {
+        Row: {
+          id: string;
+          item_id: string;
+          quantity_sold: number;
+          selling_price_per_unit: number;
+          total_revenue: number;
+          cost_price_per_unit: number;
+          total_cost: number;
+          profit: number;
+          sale_date: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          item_id: string;
+          quantity_sold: number;
+          selling_price_per_unit: number;
+          total_revenue: number;
+          cost_price_per_unit: number;
+          total_cost: number;
+          profit: number;
+          sale_date?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          item_id?: string;
+          quantity_sold?: number;
+          selling_price_per_unit?: number;
+          total_revenue?: number;
+          cost_price_per_unit?: number;
+          total_cost?: number;
+          profit?: number;
+          sale_date?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
       stock_purchases: {
         Row: {
           id: string;

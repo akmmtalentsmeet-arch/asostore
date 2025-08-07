@@ -49,6 +49,24 @@ export type Purchase = {
   };
 };
 
+export type DailySale = {
+  id: string;
+  item_id: string;
+  quantity_sold: number;
+  selling_price_per_unit: number;
+  total_revenue: number;
+  cost_price_per_unit: number;
+  total_cost: number;
+  profit: number;
+  sale_date: string;
+  notes: string | null;
+  created_at: string;
+  stock_item?: {
+    item_name: string;
+    quantity: number;
+  };
+};
+
 export type StockPurchase = {
   id: string;
   item_id: string;

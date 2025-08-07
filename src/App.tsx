@@ -8,6 +8,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Students } from './components/Students';
 import { Transactions } from './components/Transactions';
+import { DailySales } from './components/DailySales';
 import { Purchases } from './components/Purchases';
 import { Stock } from './components/Stock';
 
@@ -22,6 +23,8 @@ function AdminApp() {
         return <Students />;
       case 'transactions':
         return <Transactions />;
+      case 'daily-sales':
+        return <DailySales />;
       case 'purchases':
         return <Purchases />;
       case 'stock':

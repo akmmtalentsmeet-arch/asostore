@@ -73,22 +73,13 @@ export function Dashboard() {
       const totalPurchaseCost = stockPurchases
         ?.reduce((sum, purchase) => sum + purchase.total_cost, 0) || 0;
 
-      // Calculate net profit from student purchases
-      const { data: studentPurchases } = await supabase
-        .from('purchases')
-        .select(`
-          quantity,
-          total_price,
-          stock_items(cost_price, selling_price)
-        `);
+      // Calculate net profit from daily sales
+      const { data: dailySales } = await supabase
+        .from('daily_sales')
+        .select('profit');
 
-      let netProfit = 0;
-      studentPurchases?.forEach(purchase => {
-        if (purchase.stock_items) {
-          const profit = (purchase.stock_items.selling_price - purchase.stock_items.cost_price) * purchase.quantity;
-          netProfit += profit;
-        }
-      });
+      const netProfit = dailySales
+        ?.reduce((sum, sale) => sum + sale.profit, 0) || 0;
 
       // Fetch recent transactions
       const { data: recentTxns } = await supabase
