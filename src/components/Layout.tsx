@@ -9,7 +9,8 @@ import {
   LogOut, 
   Wallet,
   Menu,
-  X
+  X,
+  TrendingUp
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
