@@ -14,7 +14,7 @@ export type Transaction = {
   id: string;
   student_id: string;
   amount: number;
-  type: 'deposit' | 'spend';
+  type: 'deposit' | 'expense';
   method: 'online' | 'bycash' | 'credit';
   note: string | null;
   timestamp: string;

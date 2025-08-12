@@ -53,8 +53,8 @@ export function Dashboard() {
         ?.filter(t => t.type === 'deposit')
         .reduce((sum, t) => sum + t.amount, 0) || 0;
 
-      const totalSpends = transactions
-        ?.filter(t => t.type === 'spend')
+      const totalExpenses = transactions
+        ?.filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0) || 0;
 
       // Fetch stock items for total value
@@ -95,7 +95,7 @@ export function Dashboard() {
         totalStudents: studentCount || 0,
         totalBalance: totalStudentBalance,
         totalDeposits,
-        totalSpends: totalSpends,
+        totalSpends: totalExpenses,
         netProfit,
         totalStockValue,
         totalPurchaseCost,

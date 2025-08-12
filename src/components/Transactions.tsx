@@ -94,7 +94,7 @@ export function Transactions() {
       // Update student balance
       const student = students.find(s => s.id === formData.student_id);
       if (student) {
-        if (formData.type === 'spend' && student.balance < amount) {
+        if (formData.type === 'expense' && student.balance < amount) {
           toast.error('Insufficient student balance');
           return;
         }
@@ -107,7 +107,7 @@ export function Transactions() {
           ? student.total_paid + amount 
           : student.total_paid;
         
-        const newTotalSpent = formData.type === 'spend' 
+        const newTotalSpent = formData.type === 'expense' 
           ? student.total_spent + amount 
           : student.total_spent;
 
@@ -250,11 +250,11 @@ export function Transactions() {
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as 'deposit' | 'spend' })}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as 'deposit' | 'expense' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="deposit">Deposit</option>
-                <option value="spend">Spend</option>
+                <option value="expense">Expense</option>
               </select>
             </div>
             <div>
@@ -322,7 +322,7 @@ export function Transactions() {
           >
             <option value="">All Types</option>
             <option value="deposit">Deposits</option>
-            <option value="spend">Spends</option>
+            <option value="expense">Expenses</option>
           </select>
           <select
             value={methodFilter}

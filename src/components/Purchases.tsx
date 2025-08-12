@@ -14,10 +14,6 @@ export function Purchases() {
   const [formData, setFormData] = useState({
     item_id: '',
     quantity: '',
-    cost_per_unit: '',
-    supplier_name: '',
-    purchase_date: new Date().toISOString().split('T')[0],
-    notes: '',
   });
 
   useEffect(() => {
@@ -60,78 +56,76 @@ export function Purchases() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.item_id || !formData.quantity || !formData.cost_per_unit || !formData.supplier_name) {
+    if (!formData.item_id || !formData.quantity) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     const quantity = parseInt(formData.quantity);
-    const costPerUnit = parseFloat(formData.cost_per_unit);
 
     if (isNaN(quantity) || quantity <= 0) {
       toast.error('Please enter a valid quantity');
       return;
     }
 
-    if (isNaN(costPerUnit) || costPerUnit <= 0) {
-      toast.error('Please enter a valid cost per unit');
+    const selectedItem = stockItems.find(item => item.id === formData.item_id);
+    if (!selectedItem) {
+      toast.error('Selected item not found');
       return;
     }
 
-    const totalCost = quantity * costPerUnit;
+    if (selectedItem.quantity < quantity) {
+      toast.error(`Insufficient stock. Available: ${selectedItem.quantity}`);
+      return;
+    }
 
     try {
-      // Add stock purchase record
-      const { error: purchaseError } = await supabase
-        .from('stock_purchases')
+      // Calculate values
+      const sellingPricePerUnit = selectedItem.selling_price;
+      const costPricePerUnit = selectedItem.cost_price;
+      const totalRevenue = quantity * sellingPricePerUnit;
+      const totalCost = quantity * costPricePerUnit;
+      const profit = totalRevenue - totalCost;
+
+      // Add daily sale record
+      const { error: saleError } = await supabase
+        .from('daily_sales')
         .insert([{
           item_id: formData.item_id,
-          quantity,
-          cost_per_unit: costPerUnit,
+          quantity_sold: quantity,
+          selling_price_per_unit: sellingPricePerUnit,
+          total_revenue: totalRevenue,
+          cost_price_per_unit: costPricePerUnit,
           total_cost: totalCost,
-          supplier_name: formData.supplier_name,
-          purchase_date: formData.purchase_date,
-          notes: formData.notes || null,
+          profit: profit,
+          sale_date: new Date().toISOString().split('T')[0],
+          notes: null,
         }]);
 
-      if (purchaseError) throw purchaseError;
+      if (saleError) throw saleError;
 
-      // Update stock quantity and cost price
-      const stockItem = stockItems.find(item => item.id === formData.item_id);
-      if (stockItem) {
-        const newQuantity = stockItem.quantity + quantity;
-        
-        // Update weighted average cost price
-        const currentTotalValue = stockItem.quantity * stockItem.cost_price;
-        const newTotalValue = currentTotalValue + totalCost;
-        const newCostPrice = newTotalValue / newQuantity;
+      // Update stock quantity
+      const newQuantity = selectedItem.quantity - quantity;
+      const { error: stockError } = await supabase
+        .from('stock_items')
+        .update({ 
+          quantity: newQuantity,
+          last_updated: new Date().toISOString()
+        })
+        .eq('id', formData.item_id);
 
-        const { error: stockError } = await supabase
-          .from('stock_items')
-          .update({ 
-            quantity: newQuantity,
-            cost_price: newCostPrice,
-            last_updated: new Date().toISOString()
-          })
-          .eq('id', formData.item_id);
+      if (stockError) throw stockError;
 
-        if (stockError) throw stockError;
-      }
-
-      toast.success('Stock purchase recorded successfully');
+      toast.success('Daily sale recorded successfully');
       setFormData({
         item_id: '',
         quantity: '',
-        cost_per_unit: '',
-        supplier_name: '',
-        purchase_date: new Date().toISOString().split('T')[0],
-        notes: '',
       });
       setShowAddForm(false);
       fetchData();
     } catch (error) {
-      console.error('Error recording stock purchase:', error);
-      toast.error('Failed to record stock purchase');
+      console.error('Error recording daily sale:', error);
+      toast.error('Failed to record daily sale');
     }
   };
 
@@ -177,15 +171,21 @@ export function Purchases() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Stock Purchases</h1>
-          <p className="text-gray-600">Record daily stock purchases from suppliers</p>
+          <h1 className="text-2xl font-bold text-gray-900">Daily Sales</h1>
+          <p className="text-gray-600">Record daily sales to students</p>
         </div>
         <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center"
+          onClick={() => {
+            setShowAddForm(true);
+            setFormData({
+              item_id: '',
+              quantity: '',
+            });
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Record Purchase
+          Record Sale
         </button>
       </div>
 
@@ -193,7 +193,7 @@ export function Purchases() {
       {showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Record Stock Purchase</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Stock Item *
@@ -226,64 +226,12 @@ export function Purchases() {
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cost per Unit (₹) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.cost_per_unit}
-                onChange={(e) => setFormData({ ...formData, cost_per_unit: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0.00"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Supplier Name *
-              </label>
-              <input
-                type="text"
-                value={formData.supplier_name}
-                onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter supplier name"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Purchase Date *
-              </label>
-              <input
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes
-              </label>
-              <input
-                type="text"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Optional notes"
-              />
-            </div>
-            <div className="md:col-span-2 lg:col-span-3 flex space-x-3">
+            <div className="md:col-span-2 flex space-x-3">
               <button
                 type="submit"
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
               >
-                Record Purchase
+                Record Sale
               </button>
               <button
                 type="button"
@@ -292,10 +240,6 @@ export function Purchases() {
                   setFormData({
                     item_id: '',
                     quantity: '',
-                    cost_per_unit: '',
-                    supplier_name: '',
-                    purchase_date: new Date().toISOString().split('T')[0],
-                    notes: '',
                   });
                 }}
                 className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
@@ -303,13 +247,6 @@ export function Purchases() {
                 Cancel
               </button>
             </div>
-            {formData.quantity && formData.cost_per_unit && (
-              <div className="md:col-span-2 lg:col-span-3 bg-blue-50 p-4 rounded-md">
-                <p className="text-sm text-blue-800">
-                  <strong>Total Cost: {formatCurrency(parseInt(formData.quantity || '0') * parseFloat(formData.cost_per_unit || '0'))}</strong>
-                </p>
-              </div>
-            )}
           </form>
         </div>
       )}
