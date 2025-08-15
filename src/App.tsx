@@ -53,7 +53,7 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router basename="/asostore">
       <div className="App">
         <Toaster 
           position="top-right"
@@ -79,13 +79,10 @@ function App() {
         />
         <Routes>
           <Route path="/balance" element={<BalanceCheck />} />
+          <Route path="/" element={<BalanceCheck />} />
           <Route 
             path="/admin" 
             element={user ? <AdminApp /> : <LoginForm />} 
-          />
-          <Route 
-            path="/" 
-            element={<Navigate to="/balance" replace />} 
           />
         </Routes>
       </div>

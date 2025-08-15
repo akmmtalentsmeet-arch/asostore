@@ -289,7 +289,7 @@ export function BalanceCheck() {
         {/* Admin Link */}
         <div className="text-center mt-12">
           <a
-            href="/admin"
+            href="/asostore/admin"
             className="inline-flex items-center px-6 py-3 bg-white/80 backdrop-blur text-indigo-600 rounded-2xl hover:bg-white transition-all duration-200 shadow-lg hover:shadow-xl border border-white/20"
           >
             <Building2 className="h-4 w-4 mr-2" />

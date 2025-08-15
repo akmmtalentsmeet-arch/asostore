@@ -93,7 +93,7 @@ export function LoginForm() {
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-600 text-center">
             Need to check student balance?{' '}
-            <a href="/balance" className="text-blue-600 hover:text-blue-700 font-medium">
+            <a href="/asostore/balance" className="text-blue-600 hover:text-blue-700 font-medium">
               Check Balance (No Login Required)
             </a>
           </p>
