@@ -85,12 +85,12 @@ export function BalanceCheck() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-500 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200/30 to-indigo-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-200/30 to-pink-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-indigo-100/20 to-blue-100/20 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/40 to-cyan-400/40 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-teal-400/40 to-cyan-400/40 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-300/30 to-blue-300/30 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative z-10 p-4 max-w-6xl mx-auto">
@@ -106,7 +106,7 @@ export function BalanceCheck() {
               </div>
             </div>
           </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent mb-4 drop-shadow-lg">
             ASOSTORE
           </h1>
           <p className="text-xl text-gray-600 mb-2">College Prepaid Wallet System</p>
@@ -126,11 +126,11 @@ export function BalanceCheck() {
 
           {/* Search Type Selection */}
           <div className="flex justify-center mb-6">
-            <div className="bg-gray-100 p-1 rounded-2xl flex space-x-1">
+            <div className="bg-white/20 p-1 rounded-2xl flex space-x-1">
               <label className={`flex items-center px-6 py-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                searchType === 'admission' 
-                  ? 'bg-white shadow-md text-indigo-600' 
-                  : 'text-gray-600 hover:text-gray-800'
+                searchType === 'admission'
+                  ? 'bg-white shadow-md text-teal-600'
+                  : 'text-white/70 hover:text-white'
               }`}>
                 <input
                   type="radio"
@@ -143,9 +143,9 @@ export function BalanceCheck() {
                 Individual Student
               </label>
               <label className={`flex items-center px-6 py-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                searchType === 'class' 
-                  ? 'bg-white shadow-md text-indigo-600' 
-                  : 'text-gray-600 hover:text-gray-800'
+                searchType === 'class'
+                  ? 'bg-white shadow-md text-teal-600'
+                  : 'text-white/70 hover:text-white'
               }`}>
                 <input
                   type="radio"
@@ -179,7 +179,7 @@ export function BalanceCheck() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-2xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center shadow-lg hover:shadow-xl"
+              className="bg-gradient-to-r from-white to-cyan-50 text-blue-700 px-8 py-4 rounded-2xl hover:from-cyan-50 hover:to-white focus:outline-none focus:ring-4 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center shadow-lg hover:shadow-xl font-semibold"
             >
               <Search className="h-5 w-5 mr-2" />
               {loading ? 'Searching...' : 'Search'}
@@ -201,7 +201,7 @@ export function BalanceCheck() {
         {student && (
           <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 hover:shadow-3xl transition-all duration-300">
             <div className="text-center mb-8">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <div className="bg-gradient-to-r from-cyan-400 to-teal-400 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <User className="h-10 w-10 text-white" />
               </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">{student.name}</h2>
@@ -257,7 +257,7 @@ export function BalanceCheck() {
                 <div key={student.id} className="bg-white/60 backdrop-blur border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-200">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center space-x-4">
-                      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 w-12 h-12 rounded-full flex items-center justify-center">
+                      <div className="bg-gradient-to-r from-cyan-400 to-teal-400 w-12 h-12 rounded-full flex items-center justify-center">
                         <User className="h-6 w-6 text-white" />
                       </div>
                       <div>
@@ -290,7 +290,7 @@ export function BalanceCheck() {
         <div className="text-center mt-12">
           <a
             href="/asostore/admin"
-            className="inline-flex items-center px-6 py-3 bg-white/80 backdrop-blur text-indigo-600 rounded-2xl hover:bg-white transition-all duration-200 shadow-lg hover:shadow-xl border border-white/20"
+            className="inline-flex items-center px-6 py-3 bg-white/90 backdrop-blur text-teal-600 rounded-2xl hover:bg-white transition-all duration-200 shadow-lg hover:shadow-xl border border-white/20 font-semibold"
           >
             <Building2 className="h-4 w-4 mr-2" />
             Administrator Portal
